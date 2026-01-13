@@ -3,7 +3,7 @@ using System.Threading.Tasks;
 using Core.SceneManagers;
 using Core.SceneManagers.Data;
 
-namespace Core.StateMachines.Games.States
+namespace Core.StateMachines.Games.States.Bootstraps
 {
     public class BootstrapState : IGameState
     {
@@ -20,7 +20,7 @@ namespace Core.StateMachines.Games.States
             null;
         
         public IGameState.StateType Type => 
-            IGameState.StateType.Game;
+            IGameState.StateType.Bootstrap;
         
         public async Task Enter()
         {
@@ -31,6 +31,5 @@ namespace Core.StateMachines.Games.States
         {
            return Task.CompletedTask;
         }
-      
     }
 }

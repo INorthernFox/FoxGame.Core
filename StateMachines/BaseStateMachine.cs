@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.Threading.Tasks;
 using Core.Loggers;
+using FluentResults;
 
 namespace Core.StateMachines
 {
@@ -23,13 +24,13 @@ namespace Core.StateMachines
             _gameLogger = gameLogger ?? throw new ArgumentNullException(nameof(gameLogger));
         }
 
-        public virtual AddStateResult AddState(TState state)
+        public virtual Result AddState(TState state)
         {
             if(state == null)
             {
                 const string message = "Attempted to add null state";
                 _gameLogger.LogError(LogSystems, message, LogKey, this);
-                return AddStateResult.Invalid(message);
+                return Result.Fail(message);
             }
 
             Type stateType = state.StateType ?? state.GetType();
@@ -38,24 +39,24 @@ namespace Core.StateMachines
             {
                 string message = $"State {stateType.Name} already registered";
                 _gameLogger.LogWarning(LogSystems, message, LogKey, this);
-                return AddStateResult.Invalid(message);
+                return Result.Fail(message);
             }
 
             _gameLogger.LogInfo(LogSystems, $"State {stateType.Name} registered", LogKey, this);
-            return AddStateResult.Valid();
+            return Result.Ok();
         }
 
-        public Task<SetStateResult> Set<T>()
+        public Task<Result> Set<T>()
             where T : TState
         {
             return Set(typeof(T));
         }
 
-        protected async Task<SetStateResult> Set(TState nextState)
+        protected async Task<Result> Set(TState nextState)
         {
             if(_currentState == nextState)
             {
-                return SetStateResult.Invalid($"{nextState.StateType.Name} state is already set");
+                return Result.Fail($"{nextState.StateType.Name} state is already set");
             }
 
             IState previousState = _currentState;
@@ -70,7 +71,7 @@ namespace Core.StateMachines
                 catch (Exception exception)
                 {
                     _gameLogger.LogError(LogSystems, $"Error while exiting {previousState.StateType?.Name ?? previousState.GetType().Name}: {exception}", LogKey, this);
-                    return SetStateResult.Invalid(exception.Message);
+                    return Result.Fail(exception.Message);
                 }
             }
 
@@ -82,7 +83,7 @@ namespace Core.StateMachines
                 _currentState = nextState;
 
                 if(nextState.NextStateType == null)
-                    return SetStateResult.Valid();
+                    return Result.Ok();
 
                 return await Set(nextState.NextStateType);
             }
@@ -90,24 +91,24 @@ namespace Core.StateMachines
             {
                 _gameLogger.LogError(LogSystems, $"Error while entering {nextState.GetType().Name}: {exception}", LogKey, this);
                 _currentState = null;
-                return SetStateResult.Invalid(exception.Message);
+                return Result.Fail(exception.Message);
             }
         }
 
-        private async Task<SetStateResult> Set(Type stateType)
+        private async Task<Result> Set(Type stateType)
         {
             if(stateType == null)
             {
                 string message = "Set called with null type";
                 _gameLogger.LogError(LogSystems, message, LogKey, this);
-                return SetStateResult.Invalid(message);
+                return Result.Fail(message);
             }
 
             if(!_states.TryGetValue(stateType, out TState nextState))
             {
                 string message = $"State {stateType.Name} is not registered";
                 _gameLogger.LogError(LogSystems, message, LogKey, this);
-                return SetStateResult.Invalid(message);
+                return Result.Fail(message);
             }
 
             return await Set(nextState);

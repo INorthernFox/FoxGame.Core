@@ -1,7 +1,8 @@
-﻿using System.Collections.Generic;
+using System.Collections.Generic;
 using System.Threading.Tasks;
 using Core.Loggers;
 using Core.StateMachines.Games.States;
+using FluentResults;
 
 namespace Core.StateMachines.Games
 {
@@ -16,23 +17,23 @@ namespace Core.StateMachines.Games
         {
         }
 
-        public override AddStateResult AddState(IGameState state)
+        public override Result AddState(IGameState state)
         {
-            AddStateResult addStateResult = base.AddState(state);
+            Result addStateResult = base.AddState(state);
 
-            if(!addStateResult.Success)
+            if(addStateResult.IsFailed)
                 return addStateResult;
 
             return _gameStates.TryAdd(state.Type, state)
-                ? AddStateResult.Valid()
-                : AddStateResult.Invalid($"Readded {state.Type.ToString()}");
+                ? Result.Ok()
+                : Result.Fail($"Readded {state.Type.ToString()}");
         }
 
-        public async Task<SetStateResult> Set(IGameState.StateType stateType)
+        public async Task<Result> Set(IGameState.StateType stateType)
         {
             if(!_gameStates.TryGetValue(stateType, out IGameState state))
             {
-                return SetStateResult.Invalid($"State {stateType.ToString()} not found");
+                return Result.Fail($"State {stateType.ToString()} not found");
             }
             
             return await Set(state);

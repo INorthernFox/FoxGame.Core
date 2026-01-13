@@ -23,6 +23,8 @@ namespace Core.Loggers
         {
             SceneManager = 0,
             GameStateMachine = 1,
+            ResourceManager = 2,
+            UIWindow = 3,
         }
     }
 

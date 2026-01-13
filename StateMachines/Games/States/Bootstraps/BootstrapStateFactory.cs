@@ -1,5 +1,5 @@
 ﻿using Core.SceneManagers;
-using Core.StateMachines.Games.States;
+using Core.StateMachines.Games.States.Bootstraps;
 using Zenject;
 
 namespace Core.StateMachines.Games
