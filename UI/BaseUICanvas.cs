@@ -7,6 +7,8 @@ namespace Core.UI
     {
         public string ID { get; private set; }
 
+        public abstract UICanvasType CanvasType { get; }
+
         public IObservable<IBaseUICanvas> OnShow => _onShove;
         private readonly Subject<IBaseUICanvas> _onShove = new();
 

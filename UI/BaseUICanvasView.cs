@@ -39,9 +39,9 @@ namespace Core.UI
 
         private void UpdateOrder()
         {
-            Result<int> orderResult = _foregroundSorting.Get(ID, _orderSizer);
+            Result<int> orderResult = _foregroundSorting.Get(ID, _orderSizer, Model.CanvasType);
 
-            if(orderResult.IsFailed)
+            if (orderResult.IsFailed)
             {
                 string errors = string.Join("; ", orderResult.Errors.Select(e => e.Message));
                 _logger.LogError(IGameLogger.LogSystems.UIWindow, $"Can't update order {errors}", "BaseUIWindowView.UpdateOrder");

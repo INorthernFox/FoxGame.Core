@@ -4,7 +4,9 @@ namespace Core.UI
 {
     public interface IBaseUICanvas : IDisposable
     {
-        public string ID { get; }
+        string ID { get; }
+
+        UICanvasType CanvasType { get; }
 
         IObservable<IBaseUICanvas> OnShow { get; }
         IObservable<IBaseUICanvas> OnHide { get; }
