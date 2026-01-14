@@ -3,7 +3,7 @@ using FluentResults;
 
 namespace Core.UI
 {
-    public class UICamvasRepository
+    public class UICanvasRepository
     {
         private readonly Dictionary<string, IBaseUICanvas> _windows = new();
 

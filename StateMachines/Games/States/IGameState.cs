@@ -7,10 +7,11 @@
         public new enum StateType
         {
             Bootstrap = 0,
-            MainMenu = 1,
-            LoadGame = 2,
-            Game = 3,
-            UnloadGame = 4
+            LoadMainMenu = 1,
+            MainMenu = 2,
+            LoadGame = 3,
+            Game = 4,
+            UnloadGame = 5
         }
     }
 }

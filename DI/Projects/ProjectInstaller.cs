@@ -1,4 +1,3 @@
-﻿using Core.StateMachines.Games;
 using Zenject;
 
 namespace Core.DI.Projects
@@ -7,25 +6,19 @@ namespace Core.DI.Projects
     {
         public SceneManagerInstaller SceneManagerInstaller;
         public LoggerInstaller LoggerInstaller;
+        public GameStatesInstaller GameStatesInstaller;
+        public LoadingScreenInstaller LoadingScreenInstaller;
+        public UIInstaller UIInstaller;
+        public AddressablesInstaller AddressablesInstaller;
 
         public override void InstallBindings()
         {
-            InstallLogger();
-            InstallSceneManager();
-            InstallGameStateMachine();
-            InstallBootstrapStateFactory();
-        }
-
-        private void InstallLogger() =>
             LoggerInstaller.InstallBindings(Container);
-
-        private void InstallSceneManager() =>
             SceneManagerInstaller.InstallBindings(Container);
-
-        private void InstallGameStateMachine() =>
-            Container.Bind<GameStateMachine>().AsSingle();
-
-        private void InstallBootstrapStateFactory() =>
-            Container.Bind<BootstrapStateFactory>().AsSingle();
+            GameStatesInstaller.InstallBindings(Container);
+            LoadingScreenInstaller.InstallBindings(Container);
+            UIInstaller.InstallBindings(Container);
+            AddressablesInstaller.InstallBindings(Container);
+        }
     }
 }

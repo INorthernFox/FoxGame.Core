@@ -4,5 +4,6 @@
     {
         None = 0,
         LoadingScreen = 1,
+        UICanvas = 2,
     }
 }

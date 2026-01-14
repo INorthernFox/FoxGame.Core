@@ -17,6 +17,9 @@ namespace Core.StateMachines
 
         private TState _currentState;
 
+        public IState CurrentState =>
+            _currentState;
+
         protected abstract IGameLogger.LogSystems LogSystems { get; }
 
         protected BaseStateMachine(IGameLogger gameLogger)

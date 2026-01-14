@@ -6,8 +6,13 @@ using UnityEngine;
 
 namespace Core.UI
 {
+    public class BaseUICanvasView : MonoBehaviour
+    {
+        
+    }
+    
     [RequireComponent(typeof(Canvas))]
-    public abstract class BaseUICanvasView<T> : MonoBehaviour
+    public abstract class BaseUICanvasViewWithModel<T> : BaseUICanvasView
         where T : IBaseUICanvas
     {
         [SerializeField]
