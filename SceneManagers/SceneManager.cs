@@ -19,7 +19,14 @@ namespace Core.SceneManagers
         public SceneManager(ScenePreset scenePreset, IGameLogger logger)
         {
             _scenePreset = scenePreset;
-            _logger = logger;
+            _logger = logger ?? throw new ArgumentNullException(nameof(logger));
+
+            if (_scenePreset == null)
+            {
+                _logger.LogError(LogSystem, "ScenePreset is null - no scenes will be available", "Constructor", this);
+                return;
+            }
+
             BuildLookup();
         }
 
@@ -49,6 +56,7 @@ namespace Core.SceneManagers
             }
             catch (Exception e)
             {
+                _logger.LogError(LogSystem, $"Failed to load scene {type}: {e.Message}", "LoadSceneAsync.Exception", this);
                 return Result.Fail(e.Message);
             }
         }

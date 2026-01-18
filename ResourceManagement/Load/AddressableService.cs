@@ -51,9 +51,10 @@ namespace Core.ResourceManagement.Load
 
         protected async Task<Result<T>> LoadAssetAsync<T>(object key)
         {
-            if(key ==  null)
+            if(key == null)
             {
-                Result.Fail<T>("Addressable key cannot be null.");
+                _logger.LogError(LogSystem, "Addressable key cannot be null", nameof(LoadAssetAsync), this);
+                return Result.Fail<T>("Addressable key cannot be null.");
             }
 
             try
@@ -83,7 +84,7 @@ namespace Core.ResourceManagement.Load
             }
             catch (Exception exception)
             {
-                _logger?.LogError(LogSystem, $"Failed to load addressable asset with key {key}: {exception}", "AddressableResourceLoader.LoadAsync");
+                _logger.LogError(LogSystem, $"Failed to load addressable asset with key {key}: {exception}", nameof(LoadAssetAsync), this);
                 return Result.Fail<T>($"Failed to load addressable asset with key {key}: {exception}");
             }
         }

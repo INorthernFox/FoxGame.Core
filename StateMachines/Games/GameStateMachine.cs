@@ -33,9 +33,11 @@ namespace Core.StateMachines.Games
         {
             if(!_gameStates.TryGetValue(stateType, out IGameState state))
             {
-                return Result.Fail($"State {stateType.ToString()} not found");
+                string message = $"State {stateType.ToString()} not found in registered game states";
+                GameLogger.LogError(LogSystems, message, nameof(Set), this);
+                return Result.Fail(message);
             }
-            
+
             return await Set(state);
         }
     }
