@@ -13,7 +13,8 @@ namespace Core.StateMachines.Games
 
         private readonly Dictionary<IGameState.StateType, IGameState> _gameStates = new();
 
-        public GameStateMachine(IGameLogger gameLogger) : base(gameLogger)
+        public GameStateMachine(IGameLogger gameLogger) 
+            : base(gameLogger)
         {
         }
 
@@ -31,15 +32,12 @@ namespace Core.StateMachines.Games
 
         public async Task<Result> Set(IGameState.StateType stateType)
         {
-            if(!_gameStates.TryGetValue(stateType, out IGameState state))
-            {
-                string message = $"State {stateType.ToString()} not found in registered game states";
-                GameLogger.LogError(LogSystems, message, nameof(Set), this);
-                return Result.Fail(message);
-            }
-
-            return await Set(state);
+            if(_gameStates.TryGetValue(stateType, out IGameState state))
+                return await Set(state);
+            
+            string message = $"State {stateType.ToString()} not found in registered game states";
+            Logger.LogError(LogSystems, message, nameof(Set), this);
+            return Result.Fail(message);
         }
     }
-
 }

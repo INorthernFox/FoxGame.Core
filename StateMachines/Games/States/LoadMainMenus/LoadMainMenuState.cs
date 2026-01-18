@@ -1,40 +1,41 @@
-using System;
 using System.Threading.Tasks;
 using Core.LoadingScreens;
 using Core.SceneManagers;
 using Core.SceneManagers.Data;
+using Core.StateMachines.Games.States.Base;
+using Core.StateMachines.Games.States.Bootstraps;
+using Core.StateMachines.Games.States.UnloadGames;
 
 namespace Core.StateMachines.Games.States.LoadMainMenus
 {
-    public class LoadMainMenuState : IGameState
+    public class LoadMainMenuState : BaseGameState<LoadMainMenuState>
     {
         private readonly ISceneManager _sceneManager;
         private readonly LoadingScreenService _loadingScreenService;
-        private readonly GameStateMachine _gameStateMachine;
 
         public LoadMainMenuState(
             ISceneManager sceneManager,
-            LoadingScreenService loadingScreenService,
-            GameStateMachine gameStateMachine)
+            LoadingScreenService loadingScreenService)
         {
             _sceneManager = sceneManager;
             _loadingScreenService = loadingScreenService;
-            _gameStateMachine = gameStateMachine;
         }
 
-        public Type StateType => typeof(LoadMainMenuState);
+        public override IGameState.StateType Type => IGameState.StateType.LoadMainMenu;
 
-        public Type NextStateType => typeof(MainMenus.MainMenuState);
+        protected override void ConfigureTransitions()
+        {
+            AllowTransitionFrom<BootstrapState>();
+            AllowTransitionFrom<UnloadGameState>();
+        }
 
-        public IGameState.StateType Type => IGameState.StateType.LoadMainMenu;
-
-        public async Task Enter()
+        public override async Task Enter()
         {
             await _loadingScreenService.Show(LoadingScreenType.Dev, "Loading Main Menu...");
             await _sceneManager.LoadSceneAsync(SceneType.MainMenu);
         }
 
-        public Task Exit()
+        public override Task Exit()
         {
             _loadingScreenService.Hide(LoadingScreenType.Dev);
             return Task.CompletedTask;

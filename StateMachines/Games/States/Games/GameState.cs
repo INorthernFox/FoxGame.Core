@@ -1,23 +1,17 @@
-using System;
 using System.Threading.Tasks;
+using Core.StateMachines.Games.States.Base;
+using Core.StateMachines.Games.States.LoadGames;
 
 namespace Core.StateMachines.Games.States.Games
 {
-    public class GameState : IGameState
+    public class GameState : BaseGameState<GameState>
     {
-        public Type StateType =>
-            typeof(GameState);
+        public override IGameState.StateType Type => IGameState.StateType.Game;
 
-        public Type NextStateType =>
-            null;
+        protected override void ConfigureTransitions() =>
+            AllowTransitionFrom<LoadGameState>();
 
-        public IGameState.StateType Type =>
-            IGameState.StateType.Game;
-
-        public Task Enter() =>
-            Task.CompletedTask;
-
-        public Task Exit() =>
+        public override Task Enter() => 
             Task.CompletedTask;
     }
 }

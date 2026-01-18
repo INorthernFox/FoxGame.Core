@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Threading.Tasks;
+using FluentResults;
 
 namespace Core.StateMachines
 {
@@ -8,6 +9,8 @@ namespace Core.StateMachines
         public Type StateType { get; }
         public Type NextStateType { get; }
 
+        public bool CanTransitionFrom(Type nextStateType);
+        
         public Task Enter();
         public Task Exit();
     }

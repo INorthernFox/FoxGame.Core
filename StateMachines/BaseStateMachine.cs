@@ -69,6 +69,11 @@ namespace Core.StateMachines
             if(previousState != null)
             {
                 _gameLogger.LogInfo(LogSystems, $"Exiting {previousState.StateType?.Name ?? previousState.GetType().Name}", LogKey, this);
+                if (!nextState.CanTransitionFrom(previousState.StateType))
+                {
+                    var message = $"Invalid transition from {previousState.StateType.Name} to {nextState.StateType.Name}";
+                    return Result.Fail(message);
+                }
                 try
                 {
                     await previousState.Exit();

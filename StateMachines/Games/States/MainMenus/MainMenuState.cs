@@ -1,24 +1,16 @@
-using System;
 using System.Threading.Tasks;
+using Core.StateMachines.Games.States.Base;
+using Core.StateMachines.Games.States.LoadMainMenus;
 
 namespace Core.StateMachines.Games.States.MainMenus
 {
-    public class MainMenuState : IGameState
+    public class MainMenuState : BaseGameState<MainMenuState>
     {
-        public Type StateType => typeof(MainMenuState);
+        public override IGameState.StateType Type => IGameState.StateType.MainMenu;
 
-        public Type NextStateType => null;
+        protected override void ConfigureTransitions() =>
+            AllowTransitionFrom<LoadMainMenuState>();
 
-        public IGameState.StateType Type => IGameState.StateType.MainMenu;
-
-        public Task Enter()
-        {
-            return Task.CompletedTask;
-        }
-
-        public Task Exit()
-        {
-            return Task.CompletedTask;
-        }
+        public override Task Enter() => Task.CompletedTask;
     }
 }

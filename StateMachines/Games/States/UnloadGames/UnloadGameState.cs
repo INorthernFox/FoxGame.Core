@@ -1,34 +1,24 @@
-using System;
 using System.Threading.Tasks;
 using Core.SceneManagers;
 using Core.SceneManagers.Data;
+using Core.StateMachines.Games.States.Base;
+using Core.StateMachines.Games.States.Games;
 
 namespace Core.StateMachines.Games.States.UnloadGames
 {
-    public class UnloadGameState : IGameState
+    public class UnloadGameState : BaseGameState<UnloadGameState>
     {
         private readonly ISceneManager _sceneManager;
 
-        public UnloadGameState(ISceneManager sceneManager)
-        {
+        public UnloadGameState(ISceneManager sceneManager) =>
             _sceneManager = sceneManager;
-        }
 
-        public Type StateType =>
-            typeof(UnloadGameState);
+        public override IGameState.StateType Type => IGameState.StateType.UnloadGame;
 
-        public Type NextStateType =>
-            null;
+        protected override void ConfigureTransitions() =>
+            AllowTransitionFrom<GameState>();
 
-        public IGameState.StateType Type =>
-            IGameState.StateType.UnloadGame;
-
-        public async Task Enter()
-        {
+        public override async Task Enter() =>
             await _sceneManager.LoadSceneAsync(SceneType.MainMenu);
-        }
-
-        public Task Exit() =>
-            Task.CompletedTask;
     }
 }
