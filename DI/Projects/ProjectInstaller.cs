@@ -10,6 +10,7 @@ namespace Core.DI.Projects
         public LoadingScreenInstaller LoadingScreenInstaller;
         public UIInstaller UIInstaller;
         public AddressablesInstaller AddressablesInstaller;
+        public FileEditorInstaller FileEditorInstaller;
 
         public override void InstallBindings()
         {
@@ -19,6 +20,7 @@ namespace Core.DI.Projects
             LoadingScreenInstaller.InstallBindings(Container);
             UIInstaller.InstallBindings(Container);
             AddressablesInstaller.InstallBindings(Container);
+            FileEditorInstaller.InstallBindings(Container);
         }
     }
 }
