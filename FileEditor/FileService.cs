@@ -11,7 +11,7 @@ namespace Core.FileEditor
 {
     public sealed class FileService : IFileService
     {
-        private readonly IGameLogger _logger;
+        private readonly PersonalizedLogger _logger;
         private readonly IFileSerializer _serializer;
         private readonly IStreamingAssetsReader _streamingAssetsReader;
         private readonly IReadOnlyDictionary<DirectoryType, DirectoryConfig> _directories;
@@ -22,7 +22,7 @@ namespace Core.FileEditor
             IStreamingAssetsReader streamingAssetsReader,
             IReadOnlyDictionary<DirectoryType, DirectoryConfig> directories)
         {
-            _logger = logger;
+            _logger = new PersonalizedLogger(logger, IGameLogger.LogSystems.FileEditor, nameof(FileService), this);
             _serializer = serializer;
             _streamingAssetsReader = streamingAssetsReader;
             _directories = directories;
@@ -57,13 +57,9 @@ namespace Core.FileEditor
 
             var deserializeResult = _serializer.Deserialize<T>(readResult.Value);
             if (deserializeResult.IsFailed)
-            {
-                _logger.LogError(IGameLogger.LogSystems.FileEditor, $"Failed to deserialize: {fullPath}", nameof(ReadAsync), this);
-            }
+                _logger.LogError($"Failed to deserialize: {fullPath}");
             else
-            {
-                _logger.LogInfo(IGameLogger.LogSystems.FileEditor, $"Read: {fullPath}", nameof(ReadAsync), this);
-            }
+                _logger.LogInfo($"Read: {fullPath}");
 
             return deserializeResult;
         }
@@ -79,7 +75,7 @@ namespace Core.FileEditor
             var serializeResult = _serializer.Serialize(data);
             if (serializeResult.IsFailed)
             {
-                _logger.LogError(IGameLogger.LogSystems.FileEditor, $"Failed to serialize: {fullPath}", nameof(WriteAsync), this);
+                _logger.LogError($"Failed to serialize: {fullPath}");
                 return serializeResult.ToResult();
             }
 
@@ -87,13 +83,13 @@ namespace Core.FileEditor
             {
                 EnsureDirectoryExists(fullPath);
                 await File.WriteAllTextAsync(fullPath, serializeResult.Value);
-                _logger.LogInfo(IGameLogger.LogSystems.FileEditor, $"Wrote: {fullPath}", nameof(WriteAsync), this);
+                _logger.LogInfo($"Wrote: {fullPath}");
                 return Result.Ok();
             }
             catch (Exception ex)
             {
                 var error = $"Failed to write {fullPath}: {ex.Message}";
-                _logger.LogError(IGameLogger.LogSystems.FileEditor, error, nameof(WriteAsync), this);
+                _logger.LogError(error);
                 return Result.Fail(error);
             }
         }
@@ -118,7 +114,7 @@ namespace Core.FileEditor
             catch (Exception ex)
             {
                 var error = $"Failed to check existence {fullPath}: {ex.Message}";
-                _logger.LogError(IGameLogger.LogSystems.FileEditor, error, nameof(ExistsAsync), this);
+                _logger.LogError(error);
                 return Result.Fail<bool>(error);
             }
         }
@@ -135,18 +131,18 @@ namespace Core.FileEditor
             {
                 if (!File.Exists(fullPath))
                 {
-                    _logger.LogWarning(IGameLogger.LogSystems.FileEditor, $"File not found: {fullPath}", nameof(Delete), this);
+                    _logger.LogWarning($"File not found: {fullPath}");
                     return Result.Fail($"File not found: {fullPath}");
                 }
 
                 File.Delete(fullPath);
-                _logger.LogInfo(IGameLogger.LogSystems.FileEditor, $"Deleted: {fullPath}", nameof(Delete), this);
+                _logger.LogInfo($"Deleted: {fullPath}");
                 return Result.Ok();
             }
             catch (Exception ex)
             {
                 var error = $"Failed to delete {fullPath}: {ex.Message}";
-                _logger.LogError(IGameLogger.LogSystems.FileEditor, error, nameof(Delete), this);
+                _logger.LogError(error);
                 return Result.Fail(error);
             }
         }
@@ -164,7 +160,7 @@ namespace Core.FileEditor
             if (!config.CanRead)
             {
                 var error = $"Read access denied: {fullPath}";
-                _logger.LogError(IGameLogger.LogSystems.FileEditor, error, nameof(ValidateReadAccess), this);
+                _logger.LogError(error);
                 return Result.Fail(error);
             }
 
@@ -182,7 +178,7 @@ namespace Core.FileEditor
             if (!config.CanWrite)
             {
                 var error = $"Write access denied: {fullPath}";
-                _logger.LogError(IGameLogger.LogSystems.FileEditor, error, nameof(ValidateWriteAccess), this);
+                _logger.LogError(error);
                 return Result.Fail(error);
             }
 
@@ -196,8 +192,8 @@ namespace Core.FileEditor
 
             if (string.IsNullOrEmpty(fullPath))
             {
-                var error = "Path is null or empty";
-                _logger.LogError(IGameLogger.LogSystems.FileEditor, error, nameof(ResolveDirectoryType), this);
+                const string error = "Path is null or empty";
+                _logger.LogError(error);
                 return Result.Fail(error);
             }
 
@@ -215,7 +211,7 @@ namespace Core.FileEditor
             }
 
             var accessError = $"Access denied - path not in allowed directories: {fullPath}";
-            _logger.LogError(IGameLogger.LogSystems.FileEditor, accessError, nameof(ResolveDirectoryType), this);
+            _logger.LogError(accessError);
             return Result.Fail(accessError);
         }
 

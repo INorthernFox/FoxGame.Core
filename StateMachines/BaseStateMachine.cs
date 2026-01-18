@@ -6,48 +6,46 @@ using FluentResults;
 
 namespace Core.StateMachines
 {
-
     public abstract class BaseStateMachine<TState>
         where TState : class, IState
     {
-        private const string LogKey = nameof(BaseStateMachine<TState>);
-
-        private readonly IGameLogger _gameLogger;
+        private readonly IGameLogger _baseLogger;
         private readonly Dictionary<Type, TState> _states = new();
 
+        private PersonalizedLogger _logger;
         private TState _currentState;
 
-        public IState CurrentState =>
-            _currentState;
+        public IState CurrentState => _currentState;
 
-        protected IGameLogger GameLogger => _gameLogger;
+        protected PersonalizedLogger Logger => _logger ??= CreateLogger();
 
         protected abstract IGameLogger.LogSystems LogSystems { get; }
 
-        protected BaseStateMachine(IGameLogger gameLogger)
-        {
-            _gameLogger = gameLogger ?? throw new ArgumentNullException(nameof(gameLogger));
-        }
+        protected BaseStateMachine(IGameLogger gameLogger) =>
+            _baseLogger = gameLogger;
+
+        private PersonalizedLogger CreateLogger() =>
+            new(_baseLogger, LogSystems, GetType().Name, this);
 
         public virtual Result AddState(TState state)
         {
-            if(state == null)
+            if (state == null)
             {
                 const string message = "Attempted to add null state";
-                _gameLogger.LogError(LogSystems, message, LogKey, this);
+                Logger.LogError(message);
                 return Result.Fail(message);
             }
 
-            Type stateType = state.StateType ?? state.GetType();
+            var stateType = state.StateType ?? state.GetType();
 
-            if(!_states.TryAdd(stateType, state))
+            if (!_states.TryAdd(stateType, state))
             {
-                string message = $"State {stateType.Name} already registered";
-                _gameLogger.LogWarning(LogSystems, message, LogKey, this);
+                var message = $"State {stateType.Name} already registered";
+                Logger.LogWarning(message);
                 return Result.Fail(message);
             }
 
-            _gameLogger.LogInfo(LogSystems, $"State {stateType.Name} registered", LogKey, this);
+            Logger.LogInfo($"State {stateType.Name} registered");
             return Result.Ok();
         }
 
@@ -59,47 +57,51 @@ namespace Core.StateMachines
 
         protected async Task<Result> Set(TState nextState)
         {
-            if(_currentState == nextState)
-            {
+            Logger.LogInfo($"Start set {nextState.StateType.Name} state");
+
+            if (_currentState == nextState)
                 return Result.Fail($"{nextState.StateType.Name} state is already set");
-            }
 
-            IState previousState = _currentState;
+            var previousState = _currentState;
 
-            if(previousState != null)
+            if (previousState != null)
             {
-                _gameLogger.LogInfo(LogSystems, $"Exiting {previousState.StateType?.Name ?? previousState.GetType().Name}", LogKey, this);
                 if (!nextState.CanTransitionFrom(previousState.StateType))
                 {
                     var message = $"Invalid transition from {previousState.StateType.Name} to {nextState.StateType.Name}";
+                    Logger.LogError(message);
                     return Result.Fail(message);
                 }
+
+                Logger.LogInfo($"Exiting {previousState.StateType?.Name ?? previousState.GetType().Name}");
+
                 try
                 {
                     await previousState.Exit();
                 }
                 catch (Exception exception)
                 {
-                    _gameLogger.LogError(LogSystems, $"Error while exiting {previousState.StateType?.Name ?? previousState.GetType().Name}: {exception}", LogKey, this);
+                    Logger.LogError($"Error while exiting {previousState.StateType?.Name ?? previousState.GetType().Name}: {exception}");
                     return Result.Fail(exception.Message);
                 }
             }
 
-            _gameLogger.LogInfo(LogSystems, $"Entering {nextState.GetType().Name}", LogKey, this);
+            Logger.LogInfo($"Entering {nextState.GetType().Name}");
 
             try
             {
                 await nextState.Enter();
                 _currentState = nextState;
 
-                if(nextState.NextStateType == null)
+                if (nextState.NextStateType == null)
                     return Result.Ok();
 
+                Logger.LogInfo($"Starting set auto Next State {nextState.NextStateType.Name}");
                 return await Set(nextState.NextStateType);
             }
             catch (Exception exception)
             {
-                _gameLogger.LogError(LogSystems, $"Error while entering {nextState.GetType().Name}: {exception}", LogKey, this);
+                Logger.LogError($"Error while entering {nextState.GetType().Name}: {exception}");
                 _currentState = null;
                 return Result.Fail(exception.Message);
             }
@@ -107,22 +109,21 @@ namespace Core.StateMachines
 
         private async Task<Result> Set(Type stateType)
         {
-            if(stateType == null)
+            if (stateType == null)
             {
-                string message = "Set called with null type";
-                _gameLogger.LogError(LogSystems, message, LogKey, this);
+                const string message = "Set called with null type";
+                Logger.LogError(message);
                 return Result.Fail(message);
             }
 
-            if(!_states.TryGetValue(stateType, out TState nextState))
+            if (!_states.TryGetValue(stateType, out var nextState))
             {
-                string message = $"State {stateType.Name} is not registered";
-                _gameLogger.LogError(LogSystems, message, LogKey, this);
+                var message = $"State {stateType.Name} is not registered";
+                Logger.LogError(message);
                 return Result.Fail(message);
             }
 
             return await Set(nextState);
         }
     }
-
 }

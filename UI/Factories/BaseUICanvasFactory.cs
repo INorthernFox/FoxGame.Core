@@ -14,9 +14,13 @@ namespace Core.UI.Factories
         private readonly UICanvasViewLoader _viewLoader;
         private readonly UIForegroundSortingService _sortingService;
         private readonly UICanvasRepository _canvasRepository;
-        private readonly IGameLogger _logger;
+        private readonly IGameLogger _baseLogger;
+
+        private PersonalizedLogger _logger;
 
         protected abstract UICanvasType CanvasType { get; }
+
+        protected PersonalizedLogger Logger => _logger ??= CreateLogger();
 
         protected BaseUICanvasFactory(
             UICanvasAssetsConfig assetsConfig,
@@ -29,8 +33,11 @@ namespace Core.UI.Factories
             _viewLoader = viewLoader;
             _sortingService = sortingService;
             _canvasRepository = canvasRepository;
-            _logger = logger;
+            _baseLogger = logger;
         }
+
+        private PersonalizedLogger CreateLogger() =>
+            new(_baseLogger, IGameLogger.LogSystems.UIWindow, GetType().Name, this);
 
         public async Task<Result<UICanvasContainer<TCanvas, TView>>> CreateAsync(string id, Transform parent = null)
         {
@@ -68,10 +75,10 @@ namespace Core.UI.Factories
             if (prefab is not TView viewPrefab)
                 return Result.Fail<UICanvasContainer<TCanvas, TView>>($"Loaded prefab is not {typeof(TView).Name}");
 
-            TView view = Object.Instantiate(viewPrefab, parent);
+            var view = Object.Instantiate(viewPrefab, parent);
+            var model = CreateModel(id);
 
-            TCanvas model = CreateModel(id);
-            view.Initialize(model, _sortingService, _logger);
+            view.Initialize(model, _sortingService, _baseLogger);
             _canvasRepository.Add(model);
 
             return Result.Ok(new UICanvasContainer<TCanvas, TView>(model, view));

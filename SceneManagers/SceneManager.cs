@@ -13,25 +13,26 @@ namespace Core.SceneManagers
     public sealed class SceneManager : ISceneManager
     {
         private readonly ScenePreset _scenePreset;
-        private readonly IGameLogger _logger;
+        private readonly PersonalizedLogger _logger;
         private readonly Dictionary<SceneType, SceneData> _sceneLookup = new();
 
         public SceneManager(ScenePreset scenePreset, IGameLogger logger)
         {
             _scenePreset = scenePreset;
-            _logger = logger ?? throw new ArgumentNullException(nameof(logger));
+            _logger = new PersonalizedLogger(
+                logger ?? throw new ArgumentNullException(nameof(logger)),
+                IGameLogger.LogSystems.SceneManager,
+                nameof(SceneManager),
+                this);
 
             if (_scenePreset == null)
             {
-                _logger.LogError(LogSystem, "ScenePreset is null - no scenes will be available", "Constructor", this);
+                _logger.LogError("ScenePreset is null - no scenes will be available");
                 return;
             }
 
             BuildLookup();
         }
-
-        private IGameLogger.LogSystems LogSystem =>
-            IGameLogger.LogSystems.SceneManager;
 
         public Scene ActiveScene =>
             UnitySceneManager.GetActiveScene();
@@ -40,23 +41,23 @@ namespace Core.SceneManagers
         {
             try
             {
-                if(!_sceneLookup.TryGetValue(type, out SceneData sceneData))
+                if (!_sceneLookup.TryGetValue(type, out var sceneData))
                 {
-                    _logger.LogError(LogSystem, $"Scene with order {type} is not configured in preset {_scenePreset.name}.", "LoadSceneAsync.CantFind");
+                    _logger.LogError($"Scene with order {type} is not configured in preset {_scenePreset.name}.");
                     return Result.Fail($"Scene with order {type} is not configured in preset {_scenePreset.name}.");
                 }
 
-                if(UnitySceneManager.GetActiveScene().buildIndex == sceneData.Order)
+                if (UnitySceneManager.GetActiveScene().buildIndex == sceneData.Order)
                     return Result.Fail($"Scene with order {type} is already loaded.");
-                
-                _logger.LogInfo(LogSystem, $"Scene {type.ToString()} start loading", "LoadSceneAsync.SceneLoading");
+
+                _logger.LogInfo($"Scene {type} start loading");
                 await UnitySceneManager.LoadSceneAsync(sceneData.Order, loadSceneMode);
-                _logger.LogInfo(LogSystem, $"Scene {type.ToString()} is loaded", "LoadSceneAsync.SceneLoaded");
+                _logger.LogInfo($"Scene {type} is loaded");
                 return Result.Ok();
             }
             catch (Exception e)
             {
-                _logger.LogError(LogSystem, $"Failed to load scene {type}: {e.Message}", "LoadSceneAsync.Exception", this);
+                _logger.LogError($"Failed to load scene {type}: {e.Message}");
                 return Result.Fail(e.Message);
             }
         }

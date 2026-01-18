@@ -19,9 +19,9 @@ namespace Core.Initializers.Bootstraps
 {
     public class BootstrapInitializer : MonoBehaviour
     {
-        private const string LogKey = nameof(BootstrapInitializer);
-
         [SerializeField] private LoadingScreenType _defaultLoadingScreenType = LoadingScreenType.Dev;
+
+        private PersonalizedLogger _logger;
 
         [Inject]
         public async void Initialize(
@@ -32,73 +32,63 @@ namespace Core.Initializers.Bootstraps
             GameStateFactory gameStateFactory,
             UnloadGameStateFactory unloadGameStateFactory,
             LoadingScreenService loadingScreenService,
-            IGameLogger logger)
+            IGameLogger baseLogger)
         {
-            Result initializeAddressablesResult = await InitializeAddressablesAsync(logger);
-            if(initializeAddressablesResult.IsFailed)
+            _logger = new PersonalizedLogger(baseLogger, IGameLogger.LogSystems.Initializers, nameof(BootstrapInitializer), this);
+
+            var initializeAddressablesResult = await InitializeAddressablesAsync();
+            if (initializeAddressablesResult.IsFailed)
                 return;
 
             loadingScreenService.Initialize();
 
-            Result preloadResult = await loadingScreenService.Preload(_defaultLoadingScreenType);
-            if(preloadResult.IsFailed)
-            {
-                logger.LogError(IGameLogger.LogSystems.UIWindow,
-                    $"Failed to preload loading screen: {string.Join(", ", preloadResult.Errors)}",
-                    LogKey, this);
-            }
+            var preloadResult = await loadingScreenService.Preload(_defaultLoadingScreenType);
+            if (preloadResult.IsFailed)
+                _logger.LogError($"Failed to preload loading screen: {string.Join(", ", preloadResult.Errors)}");
 
-            Result addStatesResult = AddCoreStates(
+            var addStatesResult = AddCoreStates(
                 gameStateMachine,
                 loadMainMenuStateFactory,
                 mainMenuStateFactory,
                 loadGameStateFactory,
                 gameStateFactory,
-                unloadGameStateFactory,
-                logger);
+                unloadGameStateFactory);
 
-            if(addStatesResult.IsFailed)
+            if (addStatesResult.IsFailed)
             {
-                logger.LogError(IGameLogger.LogSystems.GameStateMachine,
-                    $"Failed to add core states: {string.Join(", ", addStatesResult.Errors)}",
-                    LogKey, this);
+                _logger.LogError($"Failed to add core states: {string.Join(", ", addStatesResult.Errors)}");
                 return;
             }
 
-            Result setStateResult = await gameStateMachine.Set(IGameState.StateType.LoadMainMenu);
-            if(setStateResult.IsFailed)
-            {
-                logger.LogError(IGameLogger.LogSystems.GameStateMachine,
-                    $"Failed to transition to LoadMainMenu state: {string.Join(", ", setStateResult.Errors)}",
-                    LogKey, this);
-            }
+            var setStateResult = await gameStateMachine.Set(IGameState.StateType.LoadMainMenu);
+            if (setStateResult.IsFailed)
+                _logger.LogError($"Failed to transition to LoadMainMenu state: {string.Join(", ", setStateResult.Errors)}");
         }
-        
-        private async Task<Result> InitializeAddressablesAsync(IGameLogger logger)
+
+        private async Task<Result> InitializeAddressablesAsync()
         {
             try
             {
-                logger.LogInfo(IGameLogger.LogSystems.ResourceManager, "Initializing Addressables...", LogKey, this);
+                _logger.LogInfo("Initializing Addressables...");
                 await Addressables.InitializeAsync();
-                logger.LogInfo(IGameLogger.LogSystems.ResourceManager, "Addressables initialized", LogKey, this);
+                _logger.LogInfo("Addressables initialized");
                 return Result.Ok();
             }
             catch (Exception ex)
             {
-                string message = $"Failed to initialize Addressables: {ex.Message}";
-                logger.LogError(IGameLogger.LogSystems.ResourceManager, message, LogKey, this);
+                var message = $"Failed to initialize Addressables: {ex.Message}";
+                _logger.LogError(message);
                 return Result.Fail(message);
             }
         }
 
-        private static Result AddCoreStates(
+        private Result AddCoreStates(
             GameStateMachine gameStateMachine,
             LoadMainMenuStateFactory loadMainMenuStateFactory,
             MainMenuStateFactory mainMenuStateFactory,
             LoadGameStateFactory loadGameStateFactory,
             GameStateFactory gameStateFactory,
-            UnloadGameStateFactory unloadGameStateFactory,
-            IGameLogger logger)
+            UnloadGameStateFactory unloadGameStateFactory)
         {
             var states = new IGameState[]
             {
@@ -109,14 +99,12 @@ namespace Core.Initializers.Bootstraps
                 unloadGameStateFactory.Create()
             };
 
-            foreach(IGameState state in states)
+            foreach (var state in states)
             {
-                Result result = gameStateMachine.AddState(state);
-                if(result.IsFailed)
+                var result = gameStateMachine.AddState(state);
+                if (result.IsFailed)
                 {
-                    logger.LogError(IGameLogger.LogSystems.GameStateMachine,
-                        $"Failed to add state {state.Type}: {string.Join(", ", result.Errors)}",
-                        LogKey, null);
+                    _logger.LogError($"Failed to add state {state.Type}: {string.Join(", ", result.Errors)}");
                     return result;
                 }
             }

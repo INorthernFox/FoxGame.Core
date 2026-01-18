@@ -25,7 +25,8 @@ namespace Core.Loggers
             GameStateMachine = 1,
             ResourceManager = 2,
             UIWindow = 3,
-            FileEditor = 4,
+            FileEditor = 4, 
+            Initializers = 5,
         }
     }
 

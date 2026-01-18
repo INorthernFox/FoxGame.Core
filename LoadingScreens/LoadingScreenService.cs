@@ -12,16 +12,12 @@ namespace Core.LoadingScreens
 {
     public class LoadingScreenService
     {
-        private const string LogKey = nameof(LoadingScreenService);
-
         private readonly LoadingScreenLoader _loadingScreenLoader;
         private readonly LoadingScreenConfig _loadingScreenConfig;
-        private readonly IGameLogger _logger;
-        private LoadingScreenRoot _root;
-
+        private readonly PersonalizedLogger _logger;
         private readonly Dictionary<LoadingScreenType, LoadingScreen> _screens = new();
 
-        private static IGameLogger.LogSystems LogSystem => IGameLogger.LogSystems.UIWindow;
+        private LoadingScreenRoot _root;
 
         public LoadingScreenService(
             LoadingScreenLoader loadingScreenLoader,
@@ -30,7 +26,7 @@ namespace Core.LoadingScreens
         {
             _loadingScreenLoader = loadingScreenLoader;
             _loadingScreenConfig = loadingScreenConfig;
-            _logger = logger;
+            _logger = new PersonalizedLogger(logger, IGameLogger.LogSystems.UIWindow, nameof(LoadingScreenService), this);
         }
 
         public void Initialize()
@@ -40,26 +36,24 @@ namespace Core.LoadingScreens
 
         public async Task<Result> Preload(params LoadingScreenType[] types)
         {
-            _logger.LogInfo(LogSystem, $"Preloading {types.Length} loading screen(s)", LogKey, this);
+            _logger.LogInfo($"Preloading {types.Length} loading screen(s)");
 
-            List<AssetReference> refs = new(types.Length);
+            var refs = new List<AssetReference>(types.Length);
 
-            foreach(LoadingScreenType type in types)
+            foreach (var type in types)
             {
-                Result<AssetReferenceGameObject> getRef = _loadingScreenConfig.GetData(type);
+                var getRef = _loadingScreenConfig.GetData(type);
 
-                if(getRef.IsFailed)
+                if (getRef.IsFailed)
                 {
-                    _logger.LogError(LogSystem, $"Failed to get asset reference for loading screen type {type}", LogKey, this);
+                    _logger.LogError($"Failed to get asset reference for loading screen type {type}");
                     return Result.Fail(getRef.Errors);
                 }
 
                 refs.Add(getRef.Value);
             }
 
-            Task<Result<LoadingScreen>>[] tasks = refs
-                .Select(r => _loadingScreenLoader.LoadAsync(r))
-                .ToArray();
+            var tasks = refs.Select(r => _loadingScreenLoader.LoadAsync(r)).ToArray();
 
             Result<LoadingScreen>[] results;
 
@@ -69,36 +63,36 @@ namespace Core.LoadingScreens
             }
             catch (Exception ex)
             {
-                _logger.LogError(LogSystem, $"Exception during loading screen preload: {ex.Message}", LogKey, this);
+                _logger.LogError($"Exception during loading screen preload: {ex.Message}");
                 return Result.Fail(new ExceptionalError(ex));
             }
 
-            List<Result<LoadingScreen>> failed = results.Where(r => r.IsFailed).ToList();
+            var failed = results.Where(r => r.IsFailed).ToList();
 
-            if(failed.Count <= 0)
+            if (failed.Count <= 0)
             {
-                _logger.LogInfo(LogSystem, $"Successfully preloaded {types.Length} loading screen(s)", LogKey, this);
+                _logger.LogInfo($"Successfully preloaded {types.Length} loading screen(s)");
                 return Result.Ok();
             }
 
             foreach (var failedResult in failed)
             {
-                _logger.LogError(LogSystem, $"Failed to preload loading screen: {string.Join(", ", failedResult.Errors)}", LogKey, this);
+                _logger.LogError($"Failed to preload loading screen: {string.Join(", ", failedResult.Errors)}");
             }
 
-            List<IError> mergedErrors = failed.SelectMany(r => r.Errors).ToList();
+            var mergedErrors = failed.SelectMany(r => r.Errors).ToList();
             return Result.Fail(mergedErrors);
         }
 
         public async Task<Result> Show(LoadingScreenType type, string description = "")
         {
-            if(!_screens.TryGetValue(type, out LoadingScreen loadingScreen))
+            if (!_screens.TryGetValue(type, out var loadingScreen))
             {
-                Result<LoadingScreen> loadScreenResult = await Load(type);
+                var loadScreenResult = await Load(type);
 
-                if(loadScreenResult.IsFailed)
+                if (loadScreenResult.IsFailed)
                 {
-                    _logger.LogError(LogSystem, $"Failed to load loading screen {type}: {string.Join(", ", loadScreenResult.Errors)}", LogKey, this);
+                    _logger.LogError($"Failed to load loading screen {type}: {string.Join(", ", loadScreenResult.Errors)}");
                     return Result.Fail(loadScreenResult.Errors);
                 }
 
@@ -106,20 +100,20 @@ namespace Core.LoadingScreens
             }
 
             loadingScreen.Show(description);
-            _logger.LogInfo(LogSystem, $"Showing loading screen {type}", LogKey, this);
+            _logger.LogInfo($"Showing loading screen {type}");
             return Result.Ok();
         }
 
         public Result Hide(LoadingScreenType type)
         {
-            if(!_screens.TryGetValue(type, out LoadingScreen loadingScreen) || !loadingScreen.State)
+            if (!_screens.TryGetValue(type, out var loadingScreen) || !loadingScreen.State)
             {
-                _logger.LogWarning(LogSystem, $"Cannot hide loading screen {type}: not found or not visible", LogKey, this);
+                _logger.LogWarning($"Cannot hide loading screen {type}: not found or not visible");
                 return Result.Fail($"There are no suitable loading screens for type {type}.");
             }
 
             loadingScreen.Hide();
-            _logger.LogInfo(LogSystem, $"Hiding loading screen {type}", LogKey, this);
+            _logger.LogInfo($"Hiding loading screen {type}");
             return Result.Ok();
         }
 

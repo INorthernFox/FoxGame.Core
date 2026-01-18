@@ -1,35 +1,31 @@
-﻿using System.Threading.Tasks;
+using System.Threading.Tasks;
 using Core.Loggers;
 using Core.UI;
 using Core.UI.MainMenus;
-using FluentResults;
 using UnityEngine;
 
 namespace Core.Initializers.MainMenus
 {
     public class MainMenuUiInitializer : MonoBehaviour
     {
-        [SerializeField]
-        private Transform _canvasRoot;
+        [SerializeField] private Transform _canvasRoot;
 
         public async Task Initialize(
             MainMenuCanvasFactory mainMenuCanvasFactory,
-            IGameLogger logger)
+            IGameLogger baseLogger)
         {
-            const string id = "main-menu-canvas";
-            Result<UICanvasContainer<MainMenuCanvas, MainMenuCanvasView>> createResult =
-                await mainMenuCanvasFactory.CreateAsync(id, _canvasRoot);
+            var logger = new PersonalizedLogger(baseLogger, IGameLogger.LogSystems.Initializers, nameof(MainMenuUiInitializer), this);
 
-            if(createResult.IsFailed)
+            const string id = "main-menu-canvas";
+            var createResult = await mainMenuCanvasFactory.CreateAsync(id, _canvasRoot);
+
+            if (createResult.IsFailed)
             {
-                logger.LogError(
-                    IGameLogger.LogSystems.UIWindow,
-                    $"Failed to create MainMenuCanvas: {string.Join("; ", createResult.Errors)}",
-                    "MainMenuInitializer");
+                logger.LogError($"Failed to create MainMenuCanvas: {string.Join("; ", createResult.Errors)}");
                 return;
             }
 
-            UICanvasContainer<MainMenuCanvas, MainMenuCanvasView> container = createResult.Value;
+            var container = createResult.Value;
             container.Model.Shove();
         }
     }
