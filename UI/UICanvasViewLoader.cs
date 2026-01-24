@@ -2,7 +2,7 @@ using Core.Loggers;
 using Core.ResourceManagement;
 using Core.ResourceManagement.Load;
 using Core.ResourceManagement.Load.Data;
-using UnityEngine;
+using Core.ResourceManagement.Load.interfaces;
 
 namespace Core.UI
 {
@@ -12,8 +12,10 @@ namespace Core.UI
 
         public UICanvasViewLoader(
             AdressablesPathsConfig paths,
-            IGameLogger logger)
-            : base(paths, logger)
+            IGameLogger logger,
+            IAddressableRegistry registry = null,
+            AddressableRetryConfig retryConfig = null)
+            : base(paths, logger, registry, retryConfig)
         {
         }
     }

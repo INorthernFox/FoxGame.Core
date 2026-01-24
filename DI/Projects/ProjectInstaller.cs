@@ -11,6 +11,7 @@ namespace Core.DI.Projects
         public UIInstaller UIInstaller;
         public AddressablesInstaller AddressablesInstaller;
         public FileEditorInstaller FileEditorInstaller;
+        public GeneralGameSettingInstaller GeneralGameSettingInstaller;
 
         public override void InstallBindings()
         {
@@ -21,6 +22,7 @@ namespace Core.DI.Projects
             UIInstaller.InstallBindings(Container);
             AddressablesInstaller.InstallBindings(Container);
             FileEditorInstaller.InstallBindings(Container);
+            GeneralGameSettingInstaller.InstallBindings(Container);
         }
     }
 }

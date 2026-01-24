@@ -1,6 +1,9 @@
+using System.Collections.Generic;
 using System.Threading.Tasks;
 using Core.Loggers;
+using Core.ResourceManagement.Load.interfaces;
 using FluentResults;
+using UniRx;
 using UnityEngine;
 using UnityEngine.AddressableAssets;
 
@@ -15,6 +18,7 @@ namespace Core.UI.Factories
         private readonly UIForegroundSortingService _sortingService;
         private readonly UICanvasRepository _canvasRepository;
         private readonly IGameLogger _baseLogger;
+        private readonly Dictionary<string, IAddressableHandle<BaseUICanvasView>> _handles = new();
 
         private PersonalizedLogger _logger;
 
@@ -49,31 +53,42 @@ namespace Core.UI.Factories
             if (getAssetResult.IsFailed)
                 return Result.Fail<UICanvasContainer<TCanvas, TView>>(getAssetResult.Errors);
 
-            return await LoadAndInstantiate(id, getAssetResult.Value, parent);
+            return await LoadAndInstantiateWithHandle(id, getAssetResult.Value, parent);
         }
 
         public async Task<Result<UICanvasContainer<TCanvas, TView>>> CreateAsync(string id, string fileName, Transform parent = null)
         {
-            Result<BaseUICanvasView> loadResult = await _viewLoader.LoadAsync(fileName);
+            Result<IAddressableHandle<BaseUICanvasView>> loadResult = await _viewLoader.LoadWithHandleAsync(fileName);
 
-            return loadResult.IsFailed 
-                ? Result.Fail<UICanvasContainer<TCanvas, TView>>(loadResult.Errors) 
-                : Instantiate(id, loadResult.Value, parent);
+            if (loadResult.IsFailed)
+                return Result.Fail<UICanvasContainer<TCanvas, TView>>(loadResult.Errors);
+
+            return InstantiateWithHandle(id, loadResult.Value, parent);
         }
 
-        private async Task<Result<UICanvasContainer<TCanvas, TView>>> LoadAndInstantiate(string id, AssetReferenceGameObject assetRef, Transform parent)
+        private async Task<Result<UICanvasContainer<TCanvas, TView>>> LoadAndInstantiateWithHandle(
+            string id,
+            AssetReferenceGameObject assetRef,
+            Transform parent)
         {
-            Result<BaseUICanvasView> loadResult = await _viewLoader.LoadAsync(assetRef);
+            Result<IAddressableHandle<BaseUICanvasView>> loadResult = await _viewLoader.LoadWithHandleAsync(assetRef);
 
-            return loadResult.IsFailed 
-                ? Result.Fail<UICanvasContainer<TCanvas, TView>>(loadResult.Errors) 
-                : Instantiate(id, loadResult.Value, parent);
+            if (loadResult.IsFailed)
+                return Result.Fail<UICanvasContainer<TCanvas, TView>>(loadResult.Errors);
+
+            return InstantiateWithHandle(id, loadResult.Value, parent);
         }
 
-        private Result<UICanvasContainer<TCanvas, TView>> Instantiate(string id, BaseUICanvasView prefab, Transform parent)
+        private Result<UICanvasContainer<TCanvas, TView>> InstantiateWithHandle(
+            string id,
+            IAddressableHandle<BaseUICanvasView> handle,
+            Transform parent)
         {
-            if (prefab is not TView viewPrefab)
+            if (handle.Asset is not TView viewPrefab)
+            {
+                handle.Dispose();
                 return Result.Fail<UICanvasContainer<TCanvas, TView>>($"Loaded prefab is not {typeof(TView).Name}");
+            }
 
             var view = Object.Instantiate(viewPrefab, parent);
             var model = CreateModel(id);
@@ -81,7 +96,21 @@ namespace Core.UI.Factories
             view.Initialize(model, _sortingService, _baseLogger);
             _canvasRepository.Add(model);
 
+            _handles[id] = handle;
+
+            model.OnDispose.Subscribe(_ => OnCanvasDisposed(id));
+
             return Result.Ok(new UICanvasContainer<TCanvas, TView>(model, view));
+        }
+
+        private void OnCanvasDisposed(string id)
+        {
+            if (_handles.TryGetValue(id, out var handle))
+            {
+                handle.Dispose();
+                _handles.Remove(id);
+                Logger.LogInfo($"Disposed handle for canvas {id}");
+            }
         }
 
         protected abstract TCanvas CreateModel(string id);

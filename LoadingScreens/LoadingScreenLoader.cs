@@ -1,7 +1,8 @@
-﻿using Core.Loggers;
+using Core.Loggers;
 using Core.ResourceManagement;
 using Core.ResourceManagement.Load;
 using Core.ResourceManagement.Load.Data;
+using Core.ResourceManagement.Load.interfaces;
 
 namespace Core.LoadingScreens
 {
@@ -12,8 +13,10 @@ namespace Core.LoadingScreens
 
         public LoadingScreenLoader(
             AdressablesPathsConfig paths,
-            IGameLogger logger)
-            : base(paths, logger)
+            IGameLogger logger,
+            IAddressableRegistry registry = null,
+            AddressableRetryConfig retryConfig = null)
+            : base(paths, logger, registry, retryConfig)
         {
         }
     }

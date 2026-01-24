@@ -4,6 +4,7 @@ using System.Threading.Tasks;
 using Core.Loggers;
 using Core.SceneManagers.Data;
 using FluentResults;
+using UniRx;
 using UnityEngine;
 using UnityEngine.SceneManagement;
 using UnitySceneManager = UnityEngine.SceneManagement.SceneManager;
@@ -15,6 +16,11 @@ namespace Core.SceneManagers
         private readonly ScenePreset _scenePreset;
         private readonly PersonalizedLogger _logger;
         private readonly Dictionary<SceneType, SceneData> _sceneLookup = new();
+        private readonly Subject<SceneType> _onSceneLoaded = new();
+        private readonly Subject<SceneType> _onSceneUnloading = new();
+
+        public IObservable<SceneType> OnSceneLoaded => _onSceneLoaded;
+        public IObservable<SceneType> OnSceneUnloading => _onSceneUnloading;
 
         public SceneManager(ScenePreset scenePreset, IGameLogger logger)
         {
@@ -50,9 +56,18 @@ namespace Core.SceneManagers
                 if (UnitySceneManager.GetActiveScene().buildIndex == sceneData.Order)
                     return Result.Fail($"Scene with order {type} is already loaded.");
 
+                SceneType? currentSceneType = GetCurrentSceneType();
+                if (currentSceneType.HasValue && loadSceneMode == LoadSceneMode.Single)
+                {
+                    _logger.LogInfo($"Scene {currentSceneType.Value} unloading");
+                    _onSceneUnloading.OnNext(currentSceneType.Value);
+                }
+
                 _logger.LogInfo($"Scene {type} start loading");
                 await UnitySceneManager.LoadSceneAsync(sceneData.Order, loadSceneMode);
                 _logger.LogInfo($"Scene {type} is loaded");
+
+                _onSceneLoaded.OnNext(type);
                 return Result.Ok();
             }
             catch (Exception e)
@@ -60,6 +75,17 @@ namespace Core.SceneManagers
                 _logger.LogError($"Failed to load scene {type}: {e.Message}");
                 return Result.Fail(e.Message);
             }
+        }
+
+        private SceneType? GetCurrentSceneType()
+        {
+            int currentBuildIndex = UnitySceneManager.GetActiveScene().buildIndex;
+            foreach (var kvp in _sceneLookup)
+            {
+                if (kvp.Value.Order == currentBuildIndex)
+                    return kvp.Key;
+            }
+            return null;
         }
 
         private void BuildLookup()

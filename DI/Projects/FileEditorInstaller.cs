@@ -1,4 +1,5 @@
 using System.Collections.Generic;
+using System.IO;
 using Core.FileEditor;
 using Core.FileEditor.Readers;
 using Core.FileEditor.Serialization;
@@ -65,9 +66,18 @@ namespace Core.DI.Projects
                 },
                 {
                     DirectoryType.PersistentData,
-                    new DirectoryConfig(Application.persistentDataPath, GetPersistentDataPermission())
+                    new DirectoryConfig(GetPersistentDataPath(), GetPersistentDataPermission())
                 }
             };
+        }
+
+        private string GetPersistentDataPath()
+        {
+#if UNITY_EDITOR
+            return Path.Combine(Application.dataPath, "dev_files");
+#else
+            return Application.persistentDataPath;
+#endif
         }
 
         private DirectoryPermission GetPersistentDataPermission()

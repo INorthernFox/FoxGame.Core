@@ -1,5 +1,7 @@
 using System;
 using System.Threading.Tasks;
+using Core.GameConfigs;
+using Core.GameSettings.Providers;
 using Core.LoadingScreens;
 using Core.Loggers;
 using Core.StateMachines.Games;
@@ -22,6 +24,15 @@ namespace Core.Initializers.Bootstraps
         [SerializeField] private LoadingScreenType _defaultLoadingScreenType = LoadingScreenType.Dev;
 
         private PersonalizedLogger _logger;
+        private GameStateMachine _gameStateMachine;
+        private LoadingScreenService _loadingScreenService;
+        private GeneralGameSettingProvider _generalGameSettingProvider;
+
+        private LoadMainMenuStateFactory _loadMainMenuStateFactory;
+        private MainMenuStateFactory _mainMenuStateFactory;
+        private LoadGameStateFactory _loadGameStateFactory;
+        private GameStateFactory _gameStateFactory;
+        private UnloadGameStateFactory _unloadGameStateFactory;
 
         [Inject]
         public async void Initialize(
@@ -32,37 +43,67 @@ namespace Core.Initializers.Bootstraps
             GameStateFactory gameStateFactory,
             UnloadGameStateFactory unloadGameStateFactory,
             LoadingScreenService loadingScreenService,
+            GeneralGameSettingProvider generalGameSettingProvider,
             IGameLogger baseLogger)
         {
-            _logger = new PersonalizedLogger(baseLogger, IGameLogger.LogSystems.Initializers, nameof(BootstrapInitializer), this);
-
-            var initializeAddressablesResult = await InitializeAddressablesAsync();
-            if (initializeAddressablesResult.IsFailed)
-                return;
-
-            loadingScreenService.Initialize();
-
-            var preloadResult = await loadingScreenService.Preload(_defaultLoadingScreenType);
-            if (preloadResult.IsFailed)
-                _logger.LogError($"Failed to preload loading screen: {string.Join(", ", preloadResult.Errors)}");
-
-            var addStatesResult = AddCoreStates(
+            CacheDependencies(
                 gameStateMachine,
                 loadMainMenuStateFactory,
                 mainMenuStateFactory,
                 loadGameStateFactory,
                 gameStateFactory,
-                unloadGameStateFactory);
+                unloadGameStateFactory,
+                loadingScreenService,
+                generalGameSettingProvider,
+                baseLogger);
 
-            if (addStatesResult.IsFailed)
-            {
-                _logger.LogError($"Failed to add core states: {string.Join(", ", addStatesResult.Errors)}");
+            Result initResult = await InitializeCoreSystemsAsync();
+            if (initResult.IsFailed)
                 return;
-            }
 
-            var setStateResult = await gameStateMachine.Set(IGameState.StateType.LoadMainMenu);
-            if (setStateResult.IsFailed)
-                _logger.LogError($"Failed to transition to LoadMainMenu state: {string.Join(", ", setStateResult.Errors)}");
+            Result stateMachineResult = await SetupGameStateMachineAsync();
+            if (stateMachineResult.IsFailed)
+                return;
+
+            await TransitionToMainMenuAsync();
+        }
+
+        private void CacheDependencies(
+            GameStateMachine gameStateMachine,
+            LoadMainMenuStateFactory loadMainMenuStateFactory,
+            MainMenuStateFactory mainMenuStateFactory,
+            LoadGameStateFactory loadGameStateFactory,
+            GameStateFactory gameStateFactory,
+            UnloadGameStateFactory unloadGameStateFactory,
+            LoadingScreenService loadingScreenService,
+            GeneralGameSettingProvider generalGameSettingProvider,
+            IGameLogger baseLogger)
+        {
+            _logger = new PersonalizedLogger(baseLogger, IGameLogger.LogSystems.Initializers, nameof(BootstrapInitializer), this);
+            _gameStateMachine = gameStateMachine;
+            _loadingScreenService = loadingScreenService;
+            _generalGameSettingProvider = generalGameSettingProvider;
+
+            _loadMainMenuStateFactory = loadMainMenuStateFactory;
+            _mainMenuStateFactory = mainMenuStateFactory;
+            _loadGameStateFactory = loadGameStateFactory;
+            _gameStateFactory = gameStateFactory;
+            _unloadGameStateFactory = unloadGameStateFactory;
+        }
+
+        private async Task<Result> InitializeCoreSystemsAsync()
+        {
+            Result addressablesResult = await InitializeAddressablesAsync();
+            if (addressablesResult.IsFailed)
+                return addressablesResult;
+
+            await ApplyGameSettingsAsync();
+
+            Result loadingScreenResult = await InitializeLoadingScreenAsync();
+            if (loadingScreenResult.IsFailed)
+                return loadingScreenResult;
+
+            return Result.Ok();
         }
 
         private async Task<Result> InitializeAddressablesAsync()
@@ -76,32 +117,63 @@ namespace Core.Initializers.Bootstraps
             }
             catch (Exception ex)
             {
-                var message = $"Failed to initialize Addressables: {ex.Message}";
+                string message = $"Failed to initialize Addressables: {ex.Message}";
                 _logger.LogError(message);
                 return Result.Fail(message);
             }
         }
 
-        private Result AddCoreStates(
-            GameStateMachine gameStateMachine,
-            LoadMainMenuStateFactory loadMainMenuStateFactory,
-            MainMenuStateFactory mainMenuStateFactory,
-            LoadGameStateFactory loadGameStateFactory,
-            GameStateFactory gameStateFactory,
-            UnloadGameStateFactory unloadGameStateFactory)
+        private async Task ApplyGameSettingsAsync()
         {
-            var states = new IGameState[]
+            Result<GeneralGameSettings> settingsResult = await _generalGameSettingProvider.LoadDefault();
+
+            if (settingsResult.IsSuccess)
+                _defaultLoadingScreenType = settingsResult.Value.LoadingScreenType;
+        }
+
+        private async Task<Result> InitializeLoadingScreenAsync()
+        {
+            _loadingScreenService.Initialize();
+
+            Result preloadResult = await _loadingScreenService.Preload(_defaultLoadingScreenType);
+
+            if (preloadResult.IsFailed)
             {
-                loadMainMenuStateFactory.Create(),
-                mainMenuStateFactory.Create(),
-                loadGameStateFactory.Create(),
-                gameStateFactory.Create(),
-                unloadGameStateFactory.Create()
+                _logger.LogError($"Failed to preload loading screen: {string.Join(", ", preloadResult.Errors)}");
+                return preloadResult;
+            }
+
+            return Result.Ok();
+        }
+
+        private async Task<Result> SetupGameStateMachineAsync()
+        {
+            Result addStatesResult = AddCoreStates();
+
+            if (addStatesResult.IsFailed)
+            {
+                _logger.LogError($"Failed to add core states: {string.Join(", ", addStatesResult.Errors)}");
+                return addStatesResult;
+            }
+
+            return Result.Ok();
+        }
+
+        private Result AddCoreStates()
+        {
+            IGameState[] states =
+            {
+                _loadMainMenuStateFactory.Create(),
+                _mainMenuStateFactory.Create(),
+                _loadGameStateFactory.Create(),
+                _gameStateFactory.Create(),
+                _unloadGameStateFactory.Create()
             };
 
-            foreach (var state in states)
+            foreach (IGameState state in states)
             {
-                var result = gameStateMachine.AddState(state);
+                Result result = _gameStateMachine.AddState(state);
+
                 if (result.IsFailed)
                 {
                     _logger.LogError($"Failed to add state {state.Type}: {string.Join(", ", result.Errors)}");
@@ -110,6 +182,14 @@ namespace Core.Initializers.Bootstraps
             }
 
             return Result.Ok();
+        }
+
+        private async Task TransitionToMainMenuAsync()
+        {
+            Result setStateResult = await _gameStateMachine.Set(IGameState.StateType.LoadMainMenu);
+
+            if (setStateResult.IsFailed)
+                _logger.LogError($"Failed to transition to LoadMainMenu state: {string.Join(", ", setStateResult.Errors)}");
         }
     }
 }

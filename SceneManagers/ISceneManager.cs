@@ -1,4 +1,5 @@
-﻿using System.Threading.Tasks;
+using System;
+using System.Threading.Tasks;
 using Core.SceneManagers.Data;
 using FluentResults;
 using UnityEngine.SceneManagement;
@@ -9,5 +10,7 @@ namespace Core.SceneManagers
     {
         Task<Result> LoadSceneAsync(SceneType type, LoadSceneMode loadSceneMode = LoadSceneMode.Single);
         Scene ActiveScene { get; }
+        IObservable<SceneType> OnSceneLoaded { get; }
+        IObservable<SceneType> OnSceneUnloading { get; }
     }
 }

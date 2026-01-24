@@ -1,4 +1,4 @@
-﻿using System.Threading.Tasks;
+using System.Threading.Tasks;
 using Core.Loggers;
 using Core.ResourceManagement.Load.Data;
 using Core.ResourceManagement.Load.interfaces;
@@ -15,17 +15,20 @@ namespace Core.ResourceManagement.Load
 
         protected BaseResourceLoader(
             AdressablesPathsConfig paths,
-            IGameLogger logger) :
-            base(logger)
+            IGameLogger logger,
+            IAddressableRegistry registry = null,
+            AddressableRetryConfig retryConfig = null) :
+            base(logger, retryConfig)
         {
             _paths = paths;
+            registry?.Register(this);
         }
 
         public async Task<Result<T>> LoadAsync(string key)
         {
             Result<string> pathResult = _paths.GetPath(ResourceType, key);
 
-            if(pathResult.IsFailed)
+            if (pathResult.IsFailed)
                 return Result.Fail(pathResult.Errors);
 
             return await Load(pathResult.Value);
@@ -33,8 +36,21 @@ namespace Core.ResourceManagement.Load
 
         public async Task<Result<T>> LoadAsync(AssetReference key) =>
             await Load(key);
-        
-        protected virtual async  Task<Result<T>> Load(object key)
+
+        public async Task<Result<IAddressableHandle<T>>> LoadWithHandleAsync(string key)
+        {
+            Result<string> pathResult = _paths.GetPath(ResourceType, key);
+
+            if (pathResult.IsFailed)
+                return Result.Fail(pathResult.Errors);
+
+            return await LoadWithHandle(pathResult.Value);
+        }
+
+        public async Task<Result<IAddressableHandle<T>>> LoadWithHandleAsync(AssetReference key) =>
+            await LoadWithHandle(key);
+
+        protected virtual async Task<Result<T>> Load(object key)
         {
             Result<T> loadResult = await LoadAssetAsync<T>(key);
 
@@ -43,6 +59,15 @@ namespace Core.ResourceManagement.Load
                 : Result.Ok(loadResult.Value);
         }
 
-    }
+        protected virtual async Task<Result<IAddressableHandle<T>>> LoadWithHandle(object key)
+        {
+            Result<T> loadResult = await LoadAssetAsync<T>(key);
 
+            if (loadResult.IsFailed)
+                return Result.Fail(loadResult.Errors);
+
+            var handle = new AddressableHandle<T>(key, loadResult.Value, this);
+            return Result.Ok<IAddressableHandle<T>>(handle);
+        }
+    }
 }
