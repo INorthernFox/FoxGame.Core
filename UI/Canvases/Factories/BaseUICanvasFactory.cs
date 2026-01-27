@@ -7,7 +7,7 @@ using UniRx;
 using UnityEngine;
 using UnityEngine.AddressableAssets;
 
-namespace Core.UI.Factories
+namespace Core.UI.Canvases.Factories
 {
     public abstract class BaseUICanvasFactory<TCanvas, TView>
         where TCanvas : BaseUICanvas

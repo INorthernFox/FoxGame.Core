@@ -5,7 +5,7 @@ using FluentResults;
 using UnityEngine;
 using UnityEngine.AddressableAssets;
 
-namespace Core.UI
+namespace Core.UI.Canvases
 {
     [CreateAssetMenu(fileName = "UICanvasAssetsConfig", menuName = "Game Settings/UI/Canvas Assets Config", order = 1)]
     public class UICanvasAssetsConfig : ScriptableObject

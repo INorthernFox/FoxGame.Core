@@ -3,7 +3,7 @@ using System.Collections.Generic;
 using System.Linq;
 using UnityEngine;
 
-namespace Core.UI
+namespace Core.UI.Canvases
 {
     [CreateAssetMenu(fileName = "UICanvasSortingConfig", menuName = "Game Settings/UI/Canvas Sorting Config", order = 0)]
     public class UICanvasSortingConfig : ScriptableObject

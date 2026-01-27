@@ -1,4 +1,4 @@
-﻿namespace Core.ConfigServices
+﻿namespace Core.ConfigProviders
 {
     public class BaseConfig
     {

@@ -1,7 +1,7 @@
 using System;
 using UniRx;
 
-namespace Core.UI
+namespace Core.UI.Canvases
 {
     public abstract class BaseUICanvas : IBaseUICanvas
     {

@@ -1,4 +1,4 @@
-﻿using Core.UI.MainMenus;
+﻿using Core.UI.Canvases.MainMenus;
 using Zenject;
 
 namespace Core.DI.MainMenus

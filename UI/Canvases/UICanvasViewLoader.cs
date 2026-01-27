@@ -4,7 +4,7 @@ using Core.ResourceManagement.Load;
 using Core.ResourceManagement.Load.Data;
 using Core.ResourceManagement.Load.interfaces;
 
-namespace Core.UI
+namespace Core.UI.Canvases
 {
     public class UICanvasViewLoader : ComponentBaseResourceLoader<BaseUICanvasView>
     {

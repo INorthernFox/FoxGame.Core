@@ -1,6 +1,6 @@
 ﻿using System;
 
-namespace Core.UI
+namespace Core.UI.Canvases
 {
     public interface IBaseUICanvas : IDisposable
     {

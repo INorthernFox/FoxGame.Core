@@ -1,8 +1,9 @@
-using Core.GameSettings.Providers;
+using Core.ConfigProviders;
+using Core.GameSettings;
 using Core.Loggers;
 using Core.StateMachines.Games;
 using Core.StateMachines.Games.States;
-using Core.UI.MainMenus;
+using Core.UI.Canvases.MainMenus;
 using UnityEngine;
 using Zenject;
 
@@ -16,7 +17,7 @@ namespace Core.Initializers.MainMenus
         public async void Initialize(
             MainMenuCanvasFactory mainMenuCanvasFactory,
             GameStateMachine gameStateMachine,
-            GeneralGameSettingProvider  generalGameSettingProvider,
+            IConfigsService configsService,
             IGameLogger baseLogger)
         {
             var logger = new PersonalizedLogger(baseLogger, IGameLogger.LogSystems.Initializers, nameof(MainMenuInitializer), this);
@@ -29,7 +30,7 @@ namespace Core.Initializers.MainMenus
 
             logger.LogInfo("Starting MainMenuUiInitializer...");
 
-            await _menuUiInitializer.Initialize(mainMenuCanvasFactory, generalGameSettingProvider, baseLogger);
+            await _menuUiInitializer.Initialize(mainMenuCanvasFactory,  configsService, baseLogger);
 
             logger.LogInfo("Set MainMenu GameState");
             

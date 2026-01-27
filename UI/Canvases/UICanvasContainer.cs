@@ -1,4 +1,4 @@
-namespace Core.UI
+namespace Core.UI.Canvases
 {
     public readonly struct UICanvasContainer<TCanvas, TView>
         where TCanvas : BaseUICanvas

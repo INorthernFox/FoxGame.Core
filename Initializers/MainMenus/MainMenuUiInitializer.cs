@@ -1,9 +1,12 @@
 using System.Threading.Tasks;
+using Core.ConfigProviders;
+using Core.ConfigProviders.GeneralConfigs;
 using Core.GameConfigs;
-using Core.GameSettings.Providers;
+using Core.GameSettings;
 using Core.Loggers;
 using Core.UI;
-using Core.UI.MainMenus;
+using Core.UI.Canvases;
+using Core.UI.Canvases.MainMenus;
 using FluentResults;
 using UnityEngine;
 
@@ -15,12 +18,12 @@ namespace Core.Initializers.MainMenus
 
         public async Task Initialize(
             MainMenuCanvasFactory mainMenuCanvasFactory,
-            GeneralGameSettingProvider  generalGameSettingProvider,
+            IConfigsService configsService,
             IGameLogger baseLogger)
         {
-            PersonalizedLogger logger = new PersonalizedLogger(baseLogger, IGameLogger.LogSystems.Initializers, nameof(MainMenuUiInitializer), this);
+            PersonalizedLogger logger = new(baseLogger, IGameLogger.LogSystems.Initializers, nameof(MainMenuUiInitializer), this);
 
-            Result<GeneralGameSettings> loadSettingsResult =  await generalGameSettingProvider.LoadDefault();
+            Result<GeneralConfig> loadSettingsResult = await configsService.LoadDefaultAsync<GeneralConfig>();
 
             if(loadSettingsResult.IsFailed)
             {

@@ -1,4 +1,5 @@
 using Core.UI;
+using Core.UI.Canvases;
 using UnityEngine;
 using Zenject;
 

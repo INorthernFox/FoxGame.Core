@@ -1,6 +1,9 @@
 using System;
 using System.Threading.Tasks;
+using Core.ConfigProviders;
+using Core.ConfigProviders.GeneralConfigs;
 using Core.GameConfigs;
+using Core.GameSettings;
 using Core.GameSettings.Providers;
 using Core.LoadingScreens;
 using Core.Loggers;
@@ -26,7 +29,7 @@ namespace Core.Initializers.Bootstraps
         private PersonalizedLogger _logger;
         private GameStateMachine _gameStateMachine;
         private LoadingScreenService _loadingScreenService;
-        private GeneralGameSettingProvider _generalGameSettingProvider;
+        private IConfigsService _configsService;
 
         private LoadMainMenuStateFactory _loadMainMenuStateFactory;
         private MainMenuStateFactory _mainMenuStateFactory;
@@ -43,7 +46,7 @@ namespace Core.Initializers.Bootstraps
             GameStateFactory gameStateFactory,
             UnloadGameStateFactory unloadGameStateFactory,
             LoadingScreenService loadingScreenService,
-            GeneralGameSettingProvider generalGameSettingProvider,
+            IConfigsService configsService,
             IGameLogger baseLogger)
         {
             CacheDependencies(
@@ -54,7 +57,7 @@ namespace Core.Initializers.Bootstraps
                 gameStateFactory,
                 unloadGameStateFactory,
                 loadingScreenService,
-                generalGameSettingProvider,
+                configsService,
                 baseLogger);
 
             Result initResult = await InitializeCoreSystemsAsync();
@@ -76,13 +79,13 @@ namespace Core.Initializers.Bootstraps
             GameStateFactory gameStateFactory,
             UnloadGameStateFactory unloadGameStateFactory,
             LoadingScreenService loadingScreenService,
-            GeneralGameSettingProvider generalGameSettingProvider,
+            IConfigsService configsService,
             IGameLogger baseLogger)
         {
             _logger = new PersonalizedLogger(baseLogger, IGameLogger.LogSystems.Initializers, nameof(BootstrapInitializer), this);
             _gameStateMachine = gameStateMachine;
             _loadingScreenService = loadingScreenService;
-            _generalGameSettingProvider = generalGameSettingProvider;
+            _configsService = configsService;
 
             _loadMainMenuStateFactory = loadMainMenuStateFactory;
             _mainMenuStateFactory = mainMenuStateFactory;
@@ -125,7 +128,7 @@ namespace Core.Initializers.Bootstraps
 
         private async Task ApplyGameSettingsAsync()
         {
-            Result<GeneralGameSettings> settingsResult = await _generalGameSettingProvider.LoadDefault();
+            Result<GeneralConfig> settingsResult = await _configsService.LoadDefaultAsync<GeneralConfig>();
 
             if (settingsResult.IsSuccess)
                 _defaultLoadingScreenType = settingsResult.Value.LoadingScreenType;

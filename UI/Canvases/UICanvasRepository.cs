@@ -2,7 +2,7 @@ using System.Collections.Generic;
 using Core.Loggers;
 using FluentResults;
 
-namespace Core.UI
+namespace Core.UI.Canvases
 {
     public class UICanvasRepository
     {

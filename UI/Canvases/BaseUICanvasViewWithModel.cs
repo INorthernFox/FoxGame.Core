@@ -4,13 +4,8 @@ using FluentResults;
 using UniRx;
 using UnityEngine;
 
-namespace Core.UI
+namespace Core.UI.Canvases
 {
-    public class BaseUICanvasView : MonoBehaviour
-    {
-        
-    }
-    
     [RequireComponent(typeof(Canvas))]
     public abstract class BaseUICanvasViewWithModel<T> : BaseUICanvasView
         where T : IBaseUICanvas
@@ -22,8 +17,9 @@ namespace Core.UI
         private int _orderSizer = 100;
 
         private UIForegroundSortingService _foregroundSorting;
-        private IGameLogger _logger;
-        private readonly CompositeDisposable _disposables = new();
+        protected readonly CompositeDisposable _disposables = new();
+        
+        protected PersonalizedLogger Logger { get; private set; }
         
         protected T Model {get; private set;}
 
@@ -34,7 +30,7 @@ namespace Core.UI
         {
             Model = baseUICanvas;
             _foregroundSorting = foregroundSorting;
-            _logger = logger;
+           Logger= new PersonalizedLogger(logger, IGameLogger.LogSystems.UIWindow, "BaseUIWindowView", this);
 
             _foregroundSorting.OnUpdateSorting.Where(x => gameObject.activeSelf).Subscribe(x => UpdateOrder()).AddTo(_disposables);
             Model.OnShow.Subscribe(x => Shove()).AddTo(_disposables);
@@ -49,7 +45,7 @@ namespace Core.UI
             if (orderResult.IsFailed)
             {
                 string errors = string.Join("; ", orderResult.Errors.Select(e => e.Message));
-                _logger.LogError(IGameLogger.LogSystems.UIWindow, $"Can't update order {errors}", "BaseUIWindowView.UpdateOrder");
+                Logger.LogError($"Can't update order {errors}", "BaseUIWindowView.UpdateOrder");
                 return;
             }
 

@@ -1,4 +1,5 @@
-﻿using System.Collections.Generic;
+using System;
+using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using System.Threading.Tasks;
@@ -10,7 +11,8 @@ using static Core.Loggers.IGameLogger;
 
 namespace Core.GameSettings.Providers
 {
-    public abstract class BaseSettingsProvider<T>
+
+    public abstract class BaseSettingsProvider<T> : ISettingsProvider<T>
         where T : BaseSettings
     {
         private readonly IFileService _fileService;
@@ -21,6 +23,10 @@ namespace Core.GameSettings.Providers
         private const string SettingsPath = "game_settings";
         private const string SettingsExtension = ".json";
 
+        public Type SettingsType => typeof(T);
+
+        public abstract string DefaultFileName { get; }
+
         protected abstract bool IsWritableSettings { get; }
 
         protected BaseSettingsProvider(IFileService fileService, IGameLogger logger)
@@ -29,9 +35,28 @@ namespace Core.GameSettings.Providers
             _logger = new PersonalizedLogger(logger, LogSystems.FileEditor, GetType().Name, this);
         }
 
-        protected abstract string GetCustomPath(string fileName);
+        async Task<Result<BaseSettings>> ISettingsProvider.LoadAsync(string fileName)
+        {
+            Result<T> result = await LoadAsync(fileName);
 
-        public async Task<Result<T>> WriteSettings(string fileName, T settings)
+            return result.IsSuccess
+                ? Result.Ok<BaseSettings>(result.Value)
+                : Result.Fail<BaseSettings>(result.Errors);
+        }
+
+        async Task<Result<BaseSettings>> ISettingsProvider.WriteAsync(string fileName, BaseSettings settings)
+        {
+            if (settings is not T typedSettings)
+                return Result.Fail<BaseSettings>($"Settings type mismatch. Expected {typeof(T).Name}");
+
+            Result<T> result = await WriteAsync(fileName, typedSettings);
+
+            return result.IsSuccess
+                ? Result.Ok<BaseSettings>(result.Value)
+                : Result.Fail<BaseSettings>(result.Errors);
+        }
+
+        public async Task<Result<T>> WriteAsync(string fileName, T settings)
         {
             _logger.LogInfo($"Writing settings: {fileName}");
 
@@ -41,15 +66,13 @@ namespace Core.GameSettings.Providers
                 return Result.Fail<T>($"Can't write {fileName} to settings");
             }
 
-            string customPath = GetCustomPath(fileName);
-
-            if (string.IsNullOrEmpty(customPath))
+            if (string.IsNullOrEmpty(fileName))
             {
-                _logger.LogWarning($"Custom path is empty for fileName: {fileName}");
-                return Result.Fail<T>($"File name {fileName} is empty");
+                _logger.LogWarning($"File name is empty");
+                return Result.Fail<T>("File name is empty");
             }
 
-            string fullPath = GetFullPath(customPath, DirectoryType.PersistentData);
+            string fullPath = GetFullPath(fileName, DirectoryType.PersistentData);
 
             Result writeResult = await _fileService.WriteAsync(fullPath, settings);
 
@@ -59,58 +82,56 @@ namespace Core.GameSettings.Providers
                 return Result.Fail<T>(writeResult.Errors.First());
             }
 
-            _cache[customPath] = settings;
+            _cache[fileName] = settings;
             _logger.LogInfo($"Settings written successfully: {fullPath}");
             return Result.Ok(settings);
         }
 
-        public async Task<Result<T>> Load(string fileName)
+        public async Task<Result<T>> LoadAsync(string fileName)
         {
             _logger.LogInfo($"Loading settings: {fileName}");
 
-            string customPath = GetCustomPath(fileName);
-
-            if (string.IsNullOrEmpty(customPath))
+            if (string.IsNullOrEmpty(fileName))
             {
-                _logger.LogError($"Custom path is empty for fileName: {fileName}");
-                return Result.Fail<T>($"File name {fileName} is empty");
+                _logger.LogError("File name is empty");
+                return Result.Fail<T>("File name is empty");
             }
 
-            if (_cache.TryGetValue(customPath, out T cachedValue))
+            if (_cache.TryGetValue(fileName, out T cachedValue))
             {
-                _logger.LogInfo($"Cache hit: {customPath}");
+                _logger.LogInfo($"Cache hit: {fileName}");
                 return await Task.FromResult(cachedValue);
             }
 
             if (IsWritableSettings)
             {
-                _logger.LogInfo($"Attempting to load writable settings: {customPath}");
-                Result<T> writableResult = await TryLoadWritableSettings(customPath);
+                _logger.LogInfo($"Attempting to load writable settings: {fileName}");
+                Result<T> writableResult = await TryLoadWritableSettings(fileName);
 
                 if (writableResult.IsSuccess)
                 {
-                    _cache[customPath] = writableResult.Value;
-                    _logger.LogInfo($"Settings loaded successfully from writable location: {customPath}");
+                    _cache[fileName] = writableResult.Value;
+                    _logger.LogInfo($"Settings loaded successfully from writable location: {fileName}");
                     return writableResult;
                 }
             }
 
-            _logger.LogInfo($"Attempting to load readonly settings: {customPath}");
-            Result<T> readonlyResult = await TryLoadNotWritableSettings(customPath);
+            _logger.LogInfo($"Attempting to load readonly settings: {fileName}");
+            Result<T> readonlyResult = await TryLoadNotWritableSettings(fileName);
 
             if (readonlyResult.IsSuccess)
             {
-                _cache[customPath] = readonlyResult.Value;
-                _logger.LogInfo($"Settings loaded successfully from readonly location: {customPath}");
+                _cache[fileName] = readonlyResult.Value;
+                _logger.LogInfo($"Settings loaded successfully from readonly location: {fileName}");
                 return readonlyResult;
             }
             else
             {
-                _logger.LogError($"Can't load {GetFullPath(customPath, DirectoryType.StreamingAssets)} {readonlyResult.Errors.First().Message}");
+                _logger.LogError($"Can't load {GetFullPath(fileName, DirectoryType.StreamingAssets)} {readonlyResult.Errors.First().Message}");
             }
 
-            _logger.LogError($"Failed to load settings from any location: {customPath}");
-            return Result.Fail<T>($"Can't load {customPath}");
+            _logger.LogError($"Failed to load settings from any location: {fileName}");
+            return Result.Fail<T>($"Can't load {fileName}");
         }
 
         private async Task<Result<T>> TryLoadNotWritableSettings(string customPath)
